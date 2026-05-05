@@ -1,0 +1,80 @@
+# PancreaSeg full stack:
+#   - Caddy (SSL termination via Let's Encrypt)
+#   - OHIF Viewer (pancreas mode)
+#   - Pancreas API (FastAPI + Python)
+#   - Orthanc PACS
+#
+# Usage:
+#   docker compose -f docker-compose.pancreas.yml up --build
+#
+# OHIF is served at http://<your-public-ip>  (edit Caddyfile to change)
+# Orthanc web UI accessible internally only
+# DICOM receiver at <server-ip>:4242
+
+services:
+
+  # ── Caddy reverse proxy + automatic TLS ────────────────────────────────────
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - ohif
+    restart: unless-stopped
+
+  # ── OHIF Viewer ────────────────────────────────────────────────────────────
+  ohif:
+    build:
+      context: ./Viewers
+      dockerfile: Dockerfile
+      args:
+        - APP_CONFIG=config/pancreas.js
+    image: pancrea-seg-ohif:latest
+    expose:
+      - "8080"
+    environment:
+      - PORT=8080
+    depends_on:
+      - pancreas-api
+      - orthanc
+
+  # ── Python FastAPI contact-angle service ────────────────────────────────────
+  pancreas-api:
+    build:
+      context: ./pancreas_api
+      dockerfile: Dockerfile
+    image: pancrea-seg-api:latest
+    expose:
+      - "8000"
+    environment:
+      - ORTHANC_URL=http://orthanc:8042
+      - CORS_ORIGINS=*
+    depends_on:
+      - orthanc
+    restart: unless-stopped
+
+  # ── Orthanc PACS ────────────────────────────────────────────────────────────
+  orthanc:
+    image: orthancteam/orthanc:latest
+    ports:
+      - "4242:4242"   # DICOM receiver (needed externally for C-STORE)
+    expose:
+      - "8042"
+    volumes:
+      - orthanc-data:/var/lib/orthanc/db
+    environment:
+      - ORTHANC__DICOM_AET=ORTHANC
+      - ORTHANC__DICOM_PORT=4242
+      - ORTHANC__HTTP_PORT=8042
+      - ORTHANC__AUTHENTICATION_ENABLED=false
+      - ORTHANC__DICOM_WEB__ENABLE=true
+    restart: unless-stopped
+
+volumes:
+  orthanc-data:
+  caddy-data:
+  caddy-config:

@@ -1,0 +1,17 @@
+FROM node:20.19.0-slim
+
+WORKDIR /usr/src/app
+
+RUN corepack enable
+
+ENV PATH=/usr/src/app/node_modules/.bin:$PATH
+ENV NODE_ENV=development
+ENV QUICK_BUILD=true
+ENV CHOKIDAR_USEPOLLING=true
+ENV WATCHPACK_POLLING=true
+
+COPY . .
+
+RUN yarn install --frozen-lockfile
+
+EXPOSE 3000

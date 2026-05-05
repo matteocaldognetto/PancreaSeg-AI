@@ -1,0 +1,65 @@
+services:
+  ohif-dev:
+    build:
+      context: ./Viewers
+      dockerfile: ../Dockerfile.dev
+    image: pancrea-seg-ohif-dev:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - APP_CONFIG=config/pancreas.js
+      - PUBLIC_URL=/
+      - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+      - PROXY_TARGET=http://localhost:3000/pacs/dicom-web
+      - PROXY_DOMAIN=http://orthanc:8042
+      - PROXY_PATH_REWRITE_FROM=/pacs/dicom-web
+      - PROXY_PATH_REWRITE_TO=/dicom-web
+      - PANCREAS_API_DOMAIN=http://pancreas-api:8000
+    command: >
+      sh -c "cd platform/app && webpack serve --host 0.0.0.0 --config .webpack/webpack.pwa.js"
+    volumes:
+      - ./Viewers/extensions:/usr/src/app/extensions
+      - ./Viewers/modes:/usr/src/app/modes
+      - ./Viewers/platform:/usr/src/app/platform
+      - ./Viewers/addOns:/usr/src/app/addOns
+    depends_on:
+      - pancreas-api
+      - orthanc
+
+  pancreas-api:
+    build:
+      context: ./pancreas_api
+      dockerfile: Dockerfile
+    image: pancrea-seg-api:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - ORTHANC_URL=http://orthanc:8042
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:8080
+      - WATCHFILES_FORCE_POLLING=true
+    depends_on:
+      - orthanc
+    volumes:
+      - ./pancreas_api/main.py:/app/main.py
+    command: [ "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload" ]
+    restart: unless-stopped
+
+  orthanc:
+    image: orthancteam/orthanc:latest
+    ports:
+      - "8042:8042"
+      - "4242:4242"
+    volumes:
+      - orthanc-data:/var/lib/orthanc/db
+    environment:
+      - ORTHANC__DICOM_AET=ORTHANC
+      - ORTHANC__DICOM_PORT=4242
+      - ORTHANC__HTTP_PORT=8042
+      - ORTHANC__AUTHENTICATION_ENABLED=false
+      - ORTHANC__DICOM_WEB__ENABLE=true
+    restart: unless-stopped
+
+volumes:
+  orthanc-data:

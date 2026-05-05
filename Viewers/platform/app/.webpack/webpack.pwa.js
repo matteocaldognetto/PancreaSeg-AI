@@ -24,6 +24,7 @@ const PROXY_TARGET = process.env.PROXY_TARGET;
 const PROXY_DOMAIN = process.env.PROXY_DOMAIN;
 const PROXY_PATH_REWRITE_FROM = process.env.PROXY_PATH_REWRITE_FROM;
 const PROXY_PATH_REWRITE_TO = process.env.PROXY_PATH_REWRITE_TO;
+const PANCREAS_API_DOMAIN = process.env.PANCREAS_API_DOMAIN;
 
 const OHIF_PORT = Number(process.env.OHIF_PORT || 3000);
 const ENTRY_TARGET = process.env.ENTRY_TARGET || `${SRC_DIR}/index.js`;
@@ -199,6 +200,19 @@ module.exports = (env, argv) => {
         },
       },
     };
+  }
+
+  if (PANCREAS_API_DOMAIN) {
+    mergedConfig.devServer.proxy = mergedConfig.devServer.proxy || [];
+    if (!Array.isArray(mergedConfig.devServer.proxy)) {
+      mergedConfig.devServer.proxy = [mergedConfig.devServer.proxy];
+    }
+    mergedConfig.devServer.proxy.push({
+      context: ['/pancreas-api'],
+      target: PANCREAS_API_DOMAIN,
+      changeOrigin: true,
+      pathRewrite: { '^/pancreas-api': '' },
+    });
   }
 
   if (isProdBuild) {
