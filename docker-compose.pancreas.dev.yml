@@ -17,6 +17,7 @@ services:
       - PROXY_PATH_REWRITE_FROM=/pacs/dicom-web
       - PROXY_PATH_REWRITE_TO=/dicom-web
       - PANCREAS_API_DOMAIN=http://pancreas-api:8000
+      - MONAI_LABEL_DOMAIN=http://monai-sam2:8002
     command: >
       sh -c "cd platform/app && webpack serve --host 0.0.0.0 --config .webpack/webpack.pwa.js"
     volumes:
@@ -26,6 +27,7 @@ services:
       - ./Viewers/addOns:/usr/src/app/addOns
     depends_on:
       - pancreas-api
+      - monai-sam2
       - orthanc
 
   pancreas-api:
@@ -45,6 +47,36 @@ services:
       - ./pancreas_api/main.py:/app/main.py
     command: [ "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload" ]
     restart: unless-stopped
+
+  # ── MONAI Label — organ/vessel AI segmentation (requires NVIDIA GPU) ─────────
+  monai-sam2:
+    build:
+      context: ./
+      dockerfile: ./monai-label/Dockerfile
+    image: monai-sam2:latest
+    runtime: nvidia
+    volumes:
+      - ./monai-label/predictions:/code/predictions
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "8002:8002"
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - HF_TOKEN=${HF_TOKEN:-}
+      - VLLM_BASE_URL=${VLLM_BASE_URL:-http://host.docker.internal:8000/v1}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
+    shm_size: '10gb'
+    depends_on:
+      - orthanc
+    restart: on-failure
 
   orthanc:
     image: orthancteam/orthanc:latest

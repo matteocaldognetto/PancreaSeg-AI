@@ -25,6 +25,7 @@ const PROXY_DOMAIN = process.env.PROXY_DOMAIN;
 const PROXY_PATH_REWRITE_FROM = process.env.PROXY_PATH_REWRITE_FROM;
 const PROXY_PATH_REWRITE_TO = process.env.PROXY_PATH_REWRITE_TO;
 const PANCREAS_API_DOMAIN = process.env.PANCREAS_API_DOMAIN;
+const MONAI_LABEL_DOMAIN = process.env.MONAI_LABEL_DOMAIN;
 
 const OHIF_PORT = Number(process.env.OHIF_PORT || 3000);
 const ENTRY_TARGET = process.env.ENTRY_TARGET || `${SRC_DIR}/index.js`;
@@ -212,6 +213,19 @@ module.exports = (env, argv) => {
       target: PANCREAS_API_DOMAIN,
       changeOrigin: true,
       pathRewrite: { '^/pancreas-api': '' },
+    });
+  }
+
+  if (MONAI_LABEL_DOMAIN) {
+    mergedConfig.devServer.proxy = mergedConfig.devServer.proxy || [];
+    if (!Array.isArray(mergedConfig.devServer.proxy)) {
+      mergedConfig.devServer.proxy = [mergedConfig.devServer.proxy];
+    }
+    mergedConfig.devServer.proxy.push({
+      context: ['/monai-label'],
+      target: MONAI_LABEL_DOMAIN,
+      changeOrigin: true,
+      pathRewrite: { '^/monai-label': '' },
     });
   }
 

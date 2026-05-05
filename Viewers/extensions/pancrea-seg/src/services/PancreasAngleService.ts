@@ -26,7 +26,10 @@ const EVENTS = {
   RESULTS_UPDATED: 'event::pancreasAngle_results_updated',
   COMPUTATION_STARTED: 'event::pancreasAngle_computation_started',
   COMPUTATION_ERROR: 'event::pancreasAngle_computation_error',
+  AI_STATUS_CHANGED: 'event::pancreasAngle_ai_status_changed',
 };
+
+export type AiStatus = 'idle' | 'running' | 'done' | 'error';
 
 class PancreasAngleService extends PubSubService {
   static REGISTRATION = {
@@ -38,6 +41,8 @@ class PancreasAngleService extends PubSubService {
   private results: ContactAngleResult[] = [];
   private loading = false;
   private lastError: string | null = null;
+  private aiStatus: AiStatus = 'idle';
+  private aiError: string | null = null;
 
   constructor() {
     super(EVENTS);
@@ -80,6 +85,20 @@ class PancreasAngleService extends PubSubService {
     this.results = [];
     this.lastError = null;
     this._broadcastEvent(EVENTS.RESULTS_UPDATED, { results: [] });
+  }
+
+  getAiStatus(): AiStatus {
+    return this.aiStatus;
+  }
+
+  getAiError(): string | null {
+    return this.aiError;
+  }
+
+  setAiStatus(status: AiStatus, err: string | null = null): void {
+    this.aiStatus = status;
+    this.aiError = err;
+    this._broadcastEvent(EVENTS.AI_STATUS_CHANGED, { status, err });
   }
 }
 

@@ -1,9 +1,13 @@
 import { metaData, eventTarget, Enums as csEnums } from '@cornerstonejs/core';
 import { computeContactAngle } from './utils/computeContactAngle';
 import type { ContactAngleResult } from './services/PancreasAngleService';
+import MonaiLabelClient from './services/MonaiLabelClient';
 
 const PANCREAS_API_BASE =
   (typeof window !== 'undefined' && (window as any).config?.pancreasApiBase) ?? '/pancreas-api';
+
+const MONAI_LABEL_BASE =
+  (typeof window !== 'undefined' && (window as any).config?.monaiLabelServerUrl) ?? '/monai-label';
 
 // Per-viewport overlay state: viewportId → { svg, cleanup }
 const overlayMap = new Map<string, { svg: SVGSVGElement; cleanup: () => void }>();
@@ -79,15 +83,72 @@ function makeLine(points: string, stroke: string, strokeWidth: number): SVGPolyl
 }
 
 
-export default function getCommandsModule({ servicesManager, commandsManager }) {
+export default function getCommandsModule({ servicesManager, commandsManager, extensionManager }) {
   const {
     pancreasAngleService,
     cornerstoneViewportService,
     uiNotificationService,
+    displaySetService,
   } = servicesManager.services as any;
 
   return {
     definitions: {
+      runPancreasAiSegmentation: {
+        commandFn: async () => {
+          const allActive = displaySetService.getActiveDisplaySets();
+          const ct = (allActive as any[]).find(
+            (ds: any) => ds?.Modality === 'CT' && !ds?.isDerived
+          );
+          if (!ct) {
+            uiNotificationService?.show?.({
+              title: 'PancreaSeg AI',
+              message: 'No primary CT series found in the current study.',
+              type: 'warning',
+            });
+            return;
+          }
+          const studyInstanceUID: string = ct.StudyInstanceUID;
+          const seriesInstanceUID: string = ct.SeriesInstanceUID;
+
+          pancreasAngleService.setAiStatus('running');
+          uiNotificationService?.show?.({
+            title: 'PancreaSeg AI',
+            message: 'Running organ/vessel segmentation…',
+            type: 'info',
+            duration: 4000,
+          });
+
+          const client = new MonaiLabelClient(MONAI_LABEL_BASE);
+          const result = await client.infer('segmentation', seriesInstanceUID, studyInstanceUID);
+
+          if (!result.ok) {
+            pancreasAngleService.setAiStatus('error', result.error);
+            uiNotificationService?.show?.({
+              title: 'PancreaSeg AI — failed',
+              message: result.error,
+              type: 'error',
+            });
+            return;
+          }
+
+          // MONAI has STOWed the new SEG to Orthanc. Refresh the active data
+          // source so OHIF discovers the new series without a page reload.
+          try {
+            const [dataSource] = extensionManager.getActiveDataSource() ?? [];
+            await dataSource?.retrieve?.series?.metadata?.({ StudyInstanceUID: studyInstanceUID });
+          } catch (e) {
+            console.warn('[PancreaSeg AI] series metadata refresh failed', e);
+          }
+
+          pancreasAngleService.setAiStatus('done');
+          uiNotificationService?.show?.({
+            title: 'PancreaSeg AI',
+            message: 'AI segmentation complete. Pick vessels and tumor below.',
+            type: 'success',
+          });
+        },
+      },
+
       /**
        * Main command: fetch tumor-vessel contact angles from the Python backend
        * and store results in PancreasAngleService.

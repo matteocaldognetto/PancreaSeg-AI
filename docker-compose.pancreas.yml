@@ -2,6 +2,7 @@
 #   - Caddy (SSL termination via Let's Encrypt)
 #   - OHIF Viewer (pancreas mode)
 #   - Pancreas API (FastAPI + Python)
+#   - MONAI Label (organ/vessel AI segmentation — requires NVIDIA GPU)
 #   - Orthanc PACS
 #
 # Usage:
@@ -40,6 +41,7 @@ services:
       - PORT=8080
     depends_on:
       - pancreas-api
+      - monai-sam2
       - orthanc
 
   # ── Python FastAPI contact-angle service ────────────────────────────────────
@@ -56,6 +58,37 @@ services:
     depends_on:
       - orthanc
     restart: unless-stopped
+
+  # ── MONAI Label — organ/vessel AI segmentation (requires NVIDIA GPU) ─────────
+  monai-sam2:
+    build:
+      context: ./
+      dockerfile: ./monai-label/Dockerfile
+    image: monai-sam2:latest
+    container_name: pancreas_monai_sam2
+    runtime: nvidia
+    volumes:
+      - ./monai-label/predictions:/code/predictions
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - HF_TOKEN=${HF_TOKEN:-}
+      - VLLM_BASE_URL=${VLLM_BASE_URL:-http://host.docker.internal:8000/v1}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
+    shm_size: '10gb'
+    expose:
+      - "8002"
+    depends_on:
+      - orthanc
+    restart: on-failure
 
   # ── Orthanc PACS ────────────────────────────────────────────────────────────
   orthanc:

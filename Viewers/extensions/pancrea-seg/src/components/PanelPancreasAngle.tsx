@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import type { ContactAngleResult } from '../services/PancreasAngleService';
+import type { ContactAngleResult, AiStatus } from '../services/PancreasAngleService';
 import { PancreasAngleServiceEvents } from '../services/PancreasAngleService';
 
 
@@ -121,6 +121,12 @@ export function PanelPancreasAngle({ commandsManager, servicesManager }: Props) 
   const [results, setResults] = useState<ContactAngleResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [aiStatus, setAiStatus] = useState<AiStatus>(
+    () => (pancreasAngleService as any).getAiStatus()
+  );
+  const [aiError, setAiError] = useState<string | null>(
+    () => (pancreasAngleService as any).getAiError()
+  );
 
   // Sync segment list from SegmentationService — mirrors useViewportSegmentations approach
   useEffect(() => {
@@ -167,6 +173,13 @@ export function PanelPancreasAngle({ commandsManager, servicesManager }: Props) 
           setLoading(false);
         }
       ),
+      pancreasAngleService.subscribe(
+        PancreasAngleServiceEvents.AI_STATUS_CHANGED,
+        ({ status, err }: { status: AiStatus; err: string | null }) => {
+          setAiStatus(status);
+          setAiError(err);
+        }
+      ),
     ];
 
     // Restore any existing results (e.g. after panel re-mount)
@@ -176,6 +189,10 @@ export function PanelPancreasAngle({ commandsManager, servicesManager }: Props) 
 
     return () => subs.forEach(s => s.unsubscribe());
   }, [pancreasAngleService]);
+
+  const onRunAi = useCallback(() => {
+    commandsManager.runCommand('runPancreasAiSegmentation', {});
+  }, [commandsManager]);
 
   const toggleVessel = useCallback((key: string) => {
     setSelectedVesselKeys(prev =>
@@ -263,6 +280,57 @@ export function PanelPancreasAngle({ commandsManager, servicesManager }: Props) 
       <h2 style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: '#f1f5f9' }}>
         Pancreas Contact Angles
       </h2>
+
+      {/* Step 1 — AI segmentation */}
+      <div
+        style={{
+          borderBottom: '1px solid #334155',
+          paddingBottom: '12px',
+          marginBottom: '4px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+          <button
+            type="button"
+            onClick={onRunAi}
+            disabled={aiStatus === 'running'}
+            style={{
+              padding: '6px 12px',
+              background: aiStatus === 'running' ? '#1e3a5f' : '#3b82f6',
+              color: aiStatus === 'running' ? '#64748b' : '#fff',
+              border: 'none',
+              borderRadius: '4px',
+              fontSize: '12px',
+              fontWeight: 500,
+              cursor: aiStatus === 'running' ? 'not-allowed' : 'pointer',
+              opacity: aiStatus === 'running' ? 0.7 : 1,
+              transition: 'background 0.15s',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {aiStatus === 'running' ? 'Running AI…' : 'Run AI Segmentation'}
+          </button>
+          <span
+            style={{
+              fontSize: '11px',
+              color:
+                aiStatus === 'error'
+                  ? '#f87171'
+                  : aiStatus === 'done'
+                  ? '#4ade80'
+                  : '#94a3b8',
+            }}
+          >
+            {aiStatus === 'idle' && 'Step 1 — segment vessels & pancreas'}
+            {aiStatus === 'running' && 'Working…'}
+            {aiStatus === 'done' && 'Done — pick vessels & tumor below'}
+            {aiStatus === 'error' && (aiError ?? 'Failed')}
+          </span>
+        </div>
+        <p style={{ margin: 0, fontSize: '11px', color: '#64748b' }}>
+          Tumor must be drawn manually with the brush tool (Step 2).
+        </p>
+      </div>
 
       {/* Tumor selector */}
       <div>

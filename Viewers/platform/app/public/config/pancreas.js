@@ -17,6 +17,9 @@ window.config = {
   pancreasApiBase: '/pancreas-api',
   // pancreasApiBase: 'http://localhost:8000',
 
+  monaiLabelServerUrl: '/monai-label',
+  // monaiLabelServerUrl: 'http://localhost:8002',
+
   maxNumRequests: {
     interaction: 100,
     thumbnail: 75,
