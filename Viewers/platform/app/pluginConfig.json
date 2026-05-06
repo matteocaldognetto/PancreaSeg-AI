@@ -63,9 +63,7 @@
       "version": "3.0.0"
     },
     {
-      "packageName": "@ohif/extension-pancrea-seg",
-      "default": false,
-      "version": "3.0.0"
+      "packageName": "@ohif/extension-pancrea-seg"
     }
   ],
   "modes": [
@@ -95,9 +93,7 @@
       "version": "3.0.0"
     },
     {
-      "packageName": "@ohif/mode-pancreas",
-      "default": false,
-      "version": "3.0.0"
+      "packageName": "@ohif/mode-pancreas"
     }
   ],
   "public": [
