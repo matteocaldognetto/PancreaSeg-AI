@@ -58,9 +58,9 @@ function modeFactory({ modeConfiguration }) {
       measurementService.clearMeasurements();
       initToolGroups(extensionManager, toolGroupService, commandsManager);
 
-      toolbarService.register(toolbarButtons);
+      toolbarService.addButtons(toolbarButtons);
 
-      toolbarService.updateSection(toolbarService.sections.primary, [
+      toolbarService.createButtonSection('primary', [
         'WindowLevel',
         'Pan',
         'Zoom',
@@ -71,7 +71,7 @@ function modeFactory({ modeConfiguration }) {
         'MoreTools',
       ]);
 
-      toolbarService.updateSection('MoreTools', [
+      toolbarService.createButtonSection('MoreTools', [
         'Reset',
         'rotate-right',
         'flipHorizontal',
