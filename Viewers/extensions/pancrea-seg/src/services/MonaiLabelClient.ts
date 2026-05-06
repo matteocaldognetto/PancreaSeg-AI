@@ -9,7 +9,8 @@ export default class MonaiLabelClient {
   private serverUrl: URL;
 
   constructor(serverUrl: string) {
-    this.serverUrl = new URL(serverUrl, window.location.origin);
+    const normalized = serverUrl.endsWith('/') ? serverUrl : serverUrl + '/';
+    this.serverUrl = new URL(normalized, window.location.origin);
   }
 
   async info(): Promise<AxiosResponse | undefined> {
