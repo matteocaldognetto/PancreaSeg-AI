@@ -24,8 +24,8 @@ const PROXY_TARGET = process.env.PROXY_TARGET;
 const PROXY_DOMAIN = process.env.PROXY_DOMAIN;
 const PROXY_PATH_REWRITE_FROM = process.env.PROXY_PATH_REWRITE_FROM;
 const PROXY_PATH_REWRITE_TO = process.env.PROXY_PATH_REWRITE_TO;
-const PANCREAS_API_DOMAIN = process.env.PANCREAS_API_DOMAIN;
-const MONAI_LABEL_DOMAIN = process.env.MONAI_LABEL_DOMAIN;
+const PANCREAS_API_DOMAIN = process.env.PANCREAS_API_DOMAIN || 'http://localhost:5050';
+const MONAI_LABEL_DOMAIN = process.env.MONAI_LABEL_DOMAIN || 'http://localhost:8000';
 
 const OHIF_PORT = Number(process.env.OHIF_PORT || 3000);
 const ENTRY_TARGET = process.env.ENTRY_TARGET || `${SRC_DIR}/index.js`;
@@ -183,7 +183,7 @@ module.exports = (env, argv) => {
       //writeToDisk: true,
       historyApiFallback: {
         disableDotRule: true,
-        index: PUBLIC_URL + 'index.html',
+        index: (PUBLIC_URL.endsWith('/') ? PUBLIC_URL : PUBLIC_URL + '/') + 'index.html',
       },
       devMiddleware: {
         writeToDisk: true,

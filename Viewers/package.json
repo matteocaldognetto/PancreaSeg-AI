@@ -41,6 +41,7 @@
     "dev": "lerna run dev:viewer --stream",
     "dev:no:cache": "lerna run dev:no:cache --stream",
     "dev:project": ".scripts/dev.sh",
+    "dev:pancreas": "lerna run dev:pancreas --stream",
     "dev:orthanc": "lerna run dev:orthanc --stream",
     "dev:orthanc:no:cache": "lerna run dev:orthanc:no:cache --stream",
     "dev:dcm4chee": "lerna run dev:dcm4chee --stream",
@@ -120,6 +121,8 @@
     "package-json": "^8.1.0",
     "sharp": "^0.32.6",
     "rollup": "2.79.2",
-    "body-parser": "1.20.3"
+    "body-parser": "1.20.3",
+    "webpack": "5.104.1",
+    "webpack-dev-server": "^5.2.3"
   }
 }
