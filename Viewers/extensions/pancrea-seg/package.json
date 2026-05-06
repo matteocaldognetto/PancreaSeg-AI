@@ -19,11 +19,6 @@
     "clean": "shx rm -rf dist",
     "clean:deep": "yarn run clean && shx rm -rf node_modules"
   },
-  "peerDependencies": {
-    "@ohif/core": "3.10.4",
-    "@ohif/ui": "3.10.4",
-    "react": "^18.3.1"
-  },
   "dependencies": {
     "@babel/runtime": "^7.20.13"
   }

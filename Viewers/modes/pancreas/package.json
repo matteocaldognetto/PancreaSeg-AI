@@ -22,14 +22,6 @@
     "clean": "shx rm -rf dist",
     "clean:deep": "yarn run clean && shx rm -rf node_modules"
   },
-  "peerDependencies": {
-    "@ohif/core": "3.10.4",
-    "@ohif/extension-cornerstone": "3.10.4",
-    "@ohif/extension-cornerstone-dicom-seg": "3.10.4",
-    "@ohif/extension-cornerstone-dicom-rt": "3.10.4",
-    "@ohif/extension-default": "3.10.4",
-    "@ohif/extension-pancrea-seg": "3.10.4"
-  },
   "dependencies": {
     "@babel/runtime": "^7.20.13"
   }
