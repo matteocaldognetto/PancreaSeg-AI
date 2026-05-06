@@ -218,6 +218,12 @@ module.exports = (env, argv) => {
       changeOrigin: true,
       pathRewrite: { '^/monai-label': '' },
     });
+    mergedConfig.devServer.proxy.push({
+      context: ['/monai'],
+      target: MONAI_LABEL_DOMAIN,
+      changeOrigin: true,
+      pathRewrite: { '^/monai': '' },
+    });
   }
 
   if (isProdBuild) {
