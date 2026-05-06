@@ -19,7 +19,7 @@ services:
       - PANCREAS_API_DOMAIN=http://pancreas-api:8000
       - MONAI_LABEL_DOMAIN=http://monai-sam2:8002
     command: >
-      sh -c "cd platform/app && webpack serve --host 0.0.0.0 --config .webpack/webpack.pwa.js"
+      sh -c "cd platform/app && node .webpack/start-dev.js"
     volumes:
       - ./Viewers/extensions:/usr/src/app/extensions
       - ./Viewers/modes:/usr/src/app/modes
