@@ -140,8 +140,8 @@ export default class MonaiLabelClient {
    * Initialize SAM3 session for the given series. Must be called before
    * any inferInteractive prompt calls for a new series.
    */
-  async initSession(image: string, studyInstanceUID: string): Promise<void> {
-    await this.inferInteractive(image, studyInstanceUID, { nninter: 'init' });
+  async initSession(image: string, studyInstanceUID: string): Promise<MonaiInferResult> {
+    return this.inferInteractive(image, studyInstanceUID, { nninter: 'init' });
   }
 
   /**

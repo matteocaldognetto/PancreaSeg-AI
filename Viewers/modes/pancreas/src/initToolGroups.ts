@@ -23,6 +23,10 @@ function initDefaultToolGroup(extensionManager, toolGroupService, commandsManage
       { toolName: toolNames.StackScroll },
       { toolName: toolNames.Magnify },
       { toolName: toolNames.SegmentSelect },
+      { toolName: toolNames.Probe2 },
+      { toolName: toolNames.RectangleROI2 },
+      { toolName: toolNames.PlanarFreehandROI2 },
+      { toolName: toolNames.PlanarFreehandROI3 },
     ],
     disabled: [{ toolName: toolNames.ReferenceLines }],
   };

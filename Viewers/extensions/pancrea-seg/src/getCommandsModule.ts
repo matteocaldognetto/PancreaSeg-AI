@@ -162,7 +162,17 @@ export default function getCommandsModule({ servicesManager, commandsManager, ex
           if (!ct) return;
 
           const client = new MonaiLabelClient(MONAI_LABEL_BASE);
-          await client.initSession(ct.SeriesInstanceUID, ct.StudyInstanceUID);
+          const initResult = await client.initSession(ct.SeriesInstanceUID, ct.StudyInstanceUID);
+
+          if (!initResult.ok) {
+            uiNotificationService?.show?.({
+              title: 'PancreaSeg AI — session init failed',
+              message: initResult.error,
+              type: 'error',
+            });
+            return;
+          }
+
           pancreasAngleService.setTumorSessionReady(true);
 
           uiNotificationService?.show?.({
