@@ -202,42 +202,75 @@ def run_inference(
 
     logger.info(f"Infer Request: {request}")
     result = instance.infer(request)
-    prompt_json = result['params']
     if result is None:
         raise HTTPException(status_code=500, detail="Failed to execute infer")
+    prompt_json = result.get('params', {})
+
+    # Auto-STOW: convert NIfTI result to DICOM-SEG and upload to Orthanc
+    if isinstance(instance.datastore(), DICOMWebDatastore):
+        _stow_inference_result(instance, image, result)
 
     # Dicom Seg Integration
     if output == "dicom_seg":
-        dicom_seg_file = None
         if not isinstance(instance.datastore(), DICOMWebDatastore):
             raise HTTPException(status_code=500, detail="DICOM SEG format is not supported in a non-DICOM datastore")
-        #elif p.get("label_info") is None:
-        #    raise HTTPException(status_code=404, detail="Parameters for DICOM SEG inference cannot be empty!")
-        # Transform image uri to id (similar to _to_id in local datastore)
-        image_path = instance.datastore().get_image_uri(image)
-        #suffixes = [".nii", ".nii.gz", ".nrrd"]
-        #image_path = [image_uri.replace(suffix, "") for suffix in suffixes if image_uri.endswith(suffix)][0]
-        res_img = result.get("file") if result.get("file") is not None else result.get("label")
-        if type(res_img) == str:
-            return Response(res_img, media_type="application/json")
-
-        #dicom_seg_file = nifti_to_dicom_seg(image_path, res_img, prompt_json, use_itk=True)
-        #with open(dicom_seg_file, "rb") as f:
-        #    dicom_bytes = f.read()
-        #result["dicom_seg"] = dicom_bytes
-        res_json = result.get("params")
+        res_json = result.get("params") or {}
         fields = {
-                    "prompt_info": json.dumps(res_json.get("prompt_info")),
-                    "flipped": json.dumps(res_json.get("flipped")),
-                    "nninter_elapsed": json.dumps(res_json.get("nninter_elapsed")),
-                    "sam_elapsed": json.dumps(res_json.get("sam_elapsed")),
-                    "label_name": res_json.get("label_name")
-                }
-        boundary = f"monai-{secrets.token_hex(12)}"
-        meta_json = json.dumps(fields, separators=(",", ":"))
-        return stream_multipart(meta_json, res_img)
+            "prompt_info": json.dumps(res_json.get("prompt_info")),
+            "flipped": json.dumps(res_json.get("flipped")),
+            "nninter_elapsed": json.dumps(res_json.get("nninter_elapsed")),
+            "sam_elapsed": json.dumps(res_json.get("sam_elapsed")),
+            "label_name": res_json.get("label_name"),
+        }
+        # Clean up temp NIfTI written by SAM3 interactive (not handled by send_response)
+        res_file = result.get("file") if result.get("file") is not None else result.get("label")
+        if isinstance(res_file, str) and os.path.exists(res_file):
+            background_tasks.add_task(remove_file, res_file)
+        return Response(json.dumps(fields), media_type="application/json")
 
     return send_response(instance.datastore(), result, output, background_tasks)
+
+
+def _stow_inference_result(instance, image_id: str, result: dict) -> None:
+    """Convert NIfTI inference result to DICOM-SEG and STOW to Orthanc."""
+    try:
+        res_file = result.get("file") if result.get("file") is not None else result.get("label")
+        if not isinstance(res_file, str):
+            return
+
+        # Skip placeholder init/reset responses
+        _skip = ("/init.nii.gz", "/reset.nii.gz", "sam3_not_found")
+        if any(p in res_file for p in _skip):
+            return
+
+        if not os.path.exists(res_file):
+            logger.warning(f"[STOW] NIfTI file not found: {res_file}")
+            return
+
+        # Resolve DICOM cache directory for the series
+        datastore = instance.datastore()
+        image_dir = os.path.realpath(
+            os.path.join(datastore._datastore.image_path(), image_id)
+        )
+        if not os.path.isdir(image_dir):
+            logger.warning(f"[STOW] DICOM dir not found: {image_dir}")
+            return
+
+        params = result.get("params") or {}
+        label_index_to_name = params.get("label_index_to_name")
+        dicom_seg_file = nifti_to_dicom_seg(image_dir, res_file, params, label_index_to_name=label_index_to_name)
+        if not dicom_seg_file or not os.path.exists(dicom_seg_file):
+            logger.warning("[STOW] nifti_to_dicom_seg produced no output")
+            return
+
+        try:
+            series_id = dicom_web_upload_dcm(dicom_seg_file, datastore._client)
+            logger.info(f"[STOW] Uploaded DICOM-SEG series: {series_id}")
+        finally:
+            if os.path.exists(dicom_seg_file):
+                os.unlink(dicom_seg_file)
+    except Exception as exc:
+        logger.warning(f"[STOW] Failed to upload DICOM-SEG: {exc}", exc_info=True)
 
 def read_seg_file(seg):
     """

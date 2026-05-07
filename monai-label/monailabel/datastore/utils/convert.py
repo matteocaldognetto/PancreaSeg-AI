@@ -130,83 +130,89 @@ def binary_to_image(reference_image, label, dtype=np.uint8, file_ext=".nii.gz"):
     return output_file
 
 
-def nifti_to_dicom_seg(series_dir, label, final_result_json, file_ext="*", use_itk=True) -> str:
+def nifti_to_dicom_seg(series_dir, label, final_result_json, file_ext="*", use_itk=True, label_index_to_name=None) -> str:
     start = time.time()
-    #reader.SetFileNames(dicom_filenames)
     reader = SimpleITK.ImageSeriesReader()
     dicom_filenames = reader.GetGDCMSeriesFileNames(series_dir)
-    # Read source Images
     series_dir = pathlib.Path(series_dir)
     image_files = series_dir.glob(file_ext)
     image_datasets = [dcmread(str(f), stop_before_pixels=True) for f in image_files]
 
-
-    reader.SetFileNames(dicom_filenames)            
+    reader.SetFileNames(dicom_filenames)
     image = reader.Execute()
     logger.info(f"Total Source Images: {len(image_datasets)}")
-    
+
     if 0x0008103e in image_datasets[0].keys():
         image_series_desc = image_datasets[0][0x0008103e].value
     else:
         image_series_desc = ""
-        
+
     label_itk = SimpleITK.ReadImage(label)
     label_np = SimpleITK.GetArrayFromImage(label_itk)
 
     unique_labels = np.unique(label_np.flatten()).astype(np.int_)
     unique_labels = unique_labels[unique_labels != 0]
     logger.info(f"unique_labels: {unique_labels}")
-    #info = label_info[0] if label_info and 0 < len(label_info) else {}
-    info = {}
-    #model_name = info.get("model_name", "Totalsegmentor")
-    
-    # Generate timestamp in YYYYMMDDHHMM format
+
     timestamp = datetime.now().strftime("%Y%m%d%H%M")
-    
-    if "nninter_" in label:
-        label_names = [f"nninter_pred_{timestamp}"]
-        image_series_desc = "nninter_"+ image_series_desc#"SAM2_"+ image_series_desc
+    result = final_result_json or {}
+
+    if result.get("nninter_elapsed") is not None:
+        seg_prefix = "nninter_"
+        image_series_desc = "nninter_" + image_series_desc
+    elif result.get("sam_elapsed") is not None:
+        seg_prefix = "sam_"
+        image_series_desc = "sam_" + image_series_desc
     else:
-        label_names = [f"sam_pred_{timestamp}"]
-        image_series_desc = "sam_"+ image_series_desc
+        seg_prefix = "seg_"
+        image_series_desc = "seg_" + image_series_desc
+
     segment_attributes = []
 
     for i, idx in enumerate(unique_labels):
-        #info = label_info[i] if label_info and i < len(label_info) else {}
-        label_info = {}
-        name = label_names[idx-1]
-        description = label_info.get("description", json.dumps(final_result_json["prompt_info"]))
-        rgb = list(np.random.random(size=3) * 256)
-        rgb = [int(x) for x in rgb]
+        # Resolve label name: explicit map (int or str keys) → result json list → fallback
+        int_idx = int(idx)
+        _mapped = (label_index_to_name or {}).get(int_idx) or (label_index_to_name or {}).get(str(int_idx))
+        if _mapped:
+            name = _mapped
+        else:
+            label_names_list = result.get("label_names", [])
+            if isinstance(label_names_list, list) and 0 < idx <= len(label_names_list):
+                name = label_names_list[idx - 1]
+            elif len(unique_labels) == 1 and result.get("label_name"):
+                name = result.get("label_name")
+            else:
+                name = f"label_{idx}"
+
+        prompt_info = result.get("prompt_info", {})
+        description = json.dumps(prompt_info) if prompt_info else name
+
+        elapsed_val = result.get("nninter_elapsed") or result.get("sam_elapsed")
+        elapsed = f"{seg_prefix}{elapsed_val}" if elapsed_val is not None else f"{seg_prefix}auto"
+
+        rgb = [int(x) for x in (np.random.random(size=3) * 256).tolist()]
 
         logger.info(f"{i} => {idx} => {name}")
-
-        if "nninter_" in label:
-            elapsed = "nninter_"+str(final_result_json["nninter_elapsed"])
-        else:
-            elapsed = "sam_"+str(final_result_json["sam_elapsed"])
         logger.info(f"{idx}_{name}_elapsed: {elapsed}")
-        segment_attribute = label_info.get(
-            "segmentAttribute",
-            {
-                "labelID": int(idx),
-                "SegmentLabel": name,
-                "SegmentDescription": description,
-                "SegmentAlgorithmType": "AUTOMATIC",
-                "SegmentAlgorithmName": elapsed,
-                "SegmentedPropertyCategoryCodeSequence": {
-                    "CodeValue": "123037004",
-                    "CodingSchemeDesignator": "SCT",
-                    "CodeMeaning": "Anatomical Structure",
-                },
-                "SegmentedPropertyTypeCodeSequence": {
-                    "CodeValue": "78961009",
-                    "CodingSchemeDesignator": "SCT",
-                    "CodeMeaning": name,
-                },
-                "recommendedDisplayRGBValue": rgb,
+
+        segment_attribute = {
+            "labelID": int(idx),
+            "SegmentLabel": name,
+            "SegmentDescription": description,
+            "SegmentAlgorithmType": "AUTOMATIC",
+            "SegmentAlgorithmName": elapsed,
+            "SegmentedPropertyCategoryCodeSequence": {
+                "CodeValue": "123037004",
+                "CodingSchemeDesignator": "SCT",
+                "CodeMeaning": "Anatomical Structure",
             },
-        )
+            "SegmentedPropertyTypeCodeSequence": {
+                "CodeValue": "78961009",
+                "CodingSchemeDesignator": "SCT",
+                "CodeMeaning": name,
+            },
+            "recommendedDisplayRGBValue": rgb,
+        }
         segment_attributes.append(segment_attribute)
 
     template = {

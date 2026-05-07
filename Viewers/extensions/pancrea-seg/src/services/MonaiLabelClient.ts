@@ -48,7 +48,7 @@ export default class MonaiLabelClient {
       result_extension: '.nii.gz',
       result_dtype: 'uint16',
       result_compress: false,
-      restore_label_idx: false,
+      restore_label_idx: true,
       studyInstanceUID,
       nninter: null,
       pos_points: [],

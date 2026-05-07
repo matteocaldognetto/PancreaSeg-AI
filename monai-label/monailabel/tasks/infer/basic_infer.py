@@ -13,6 +13,7 @@ import copy
 import hashlib
 import logging
 import os
+import tempfile
 import time
 from datetime import datetime
 from abc import abstractmethod
@@ -1835,19 +1836,10 @@ class BasicInferTask(InferTask):
             # --- Retrieve Results ---
             # The target buffer holds the segmentation result.
             results = session.target_buffer.clone()
-
-            # Enjoy!
             pred = results.numpy()
 
-            
-
-            #pred_itk = sitk.GetImageFromArray(pred)
-            #pred_itk.CopyInformation(img)
-            #pred_itk = sitk.Cast(pred_itk, sitk.sitkUInt8)
-            #sitk.WriteImage(pred_itk, f'/code/predictions/nninter_{image_series_desc}.nii.gz')
             nninter_elapsed = time.time() - start
             logger.info(f"nninter latency : {nninter_elapsed} (sec)")
-            # final_result_json["dicom_seg"] = raw
             final_result_json["prompt_info"] = result_json
             final_result_json["nninter_elapsed"] = nninter_elapsed
 
@@ -1861,9 +1853,13 @@ class BasicInferTask(InferTask):
 
             logger.info(f"final_result_json info: {final_result_json}")
             logger.info(f"just before pred and return: {time.time()-start} secs")
-            # result_json contains prompt information
-            #f'/code/predictions/nninter_{image_series_desc}.nii.gz'
-            return pred, final_result_json
+
+            # Write prediction to NIfTI with correct spatial metadata for DICOM-SEG conversion
+            pred_itk = sitk.GetImageFromArray(pred.astype(np.uint8))
+            pred_itk.CopyInformation(img)
+            nifti_out = tempfile.NamedTemporaryFile(suffix=f"_nninter_{timestamp}.nii.gz", delete=False).name
+            sitk.WriteImage(pred_itk, nifti_out)
+            return nifti_out, final_result_json
 
         #SAM2
         if nnInter == False:
@@ -2143,6 +2139,9 @@ class BasicInferTask(InferTask):
             result_file, result_json = self.writer(data)
             if callback_writer:
                 data = callback_writer(data)
+            # Embed label map so infer.py can name DICOM-SEG segments correctly
+            if isinstance(self.labels, dict):
+                result_json["label_index_to_name"] = {v: k for k, v in self.labels.items()}
             return result_file, result_json
 
     def run_pre_transforms(self, data: Dict[str, Any], transforms):
