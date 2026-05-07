@@ -51,6 +51,16 @@ export default class MonaiLabelClient {
       result_compress: false,
       restore_label_idx: false,
       studyInstanceUID,
+      nninter: false,
+      pos_points: [],
+      neg_points: [],
+      pos_boxes: [],
+      neg_boxes: [],
+      pos_lassos: [],
+      neg_lassos: [],
+      pos_scribbles: [],
+      neg_scribbles: [],
+      texts: [''],
       ...extraParams,
     };
 
