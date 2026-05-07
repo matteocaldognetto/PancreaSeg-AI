@@ -51,7 +51,7 @@ export default class MonaiLabelClient {
       result_compress: false,
       restore_label_idx: false,
       studyInstanceUID,
-      nninter: false,
+      nninter: null,
       pos_points: [],
       neg_points: [],
       pos_boxes: [],
