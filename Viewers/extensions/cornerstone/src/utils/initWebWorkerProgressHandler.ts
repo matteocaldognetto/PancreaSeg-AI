@@ -24,8 +24,11 @@ export function initializeWebWorkerProgressHandler(uiNotificationService: any) {
     try {
       const { progress, type, id } = detail;
 
-      // Skip notifications for compute statistics
-      if (type === cornerstoneTools.Enums.WorkerTypes.COMPUTE_STATISTICS) {
+      // Skip notifications for background per-segment computations
+      if (
+        type === cornerstoneTools.Enums.WorkerTypes.COMPUTE_STATISTICS ||
+        type === cornerstoneTools.Enums.WorkerTypes.COMPUTE_LARGEST_BIDIRECTIONAL
+      ) {
         return;
       }
 
