@@ -2121,6 +2121,30 @@ class BasicInferTask(InferTask):
 
             return pred, final_result_json
 
+        else:
+            # Standard SegResNet auto-segmentation pipeline (nnInter is None)
+            pre_transforms = self.pre_transforms(data)
+            data = self.run_pre_transforms(data, pre_transforms)
+            if callback_run_pre_transforms:
+                data = callback_run_pre_transforms(data)
+
+            data = self.run_inferer(data, device=device)
+            if callback_run_inferer:
+                data = callback_run_inferer(data)
+
+            data = self.run_invert_transforms(data, pre_transforms, self.config.get("invert_labels", None))
+            if callback_run_invert_transforms:
+                data = callback_run_invert_transforms(data)
+
+            data = self.run_post_transforms(data, self.post_transforms(data))
+            if callback_run_post_transforms:
+                data = callback_run_post_transforms(data)
+
+            result_file, result_json = self.writer(data)
+            if callback_writer:
+                data = callback_writer(data)
+            return result_file, result_json
+
     def run_pre_transforms(self, data: Dict[str, Any], transforms):
         pre_cache: List[Any] = []
         post_cache: List[Any] = []
