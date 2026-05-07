@@ -65,4 +65,4 @@ ENV PATH=$PATH":/code/monailabel/scripts"
 ENV PYTHONPATH=/code:$PYTHONPATH
 RUN python -m monailabel.main apps --download --name radiology --output /code/apps
 EXPOSE 8002
-CMD ["python", "-m", "monailabel.main", "start_server", "--app", "/code/apps/radiology", "--studies", "http://orthanc:8042/dicom-web", "--conf", "models", "segmentation", "--conf", "use_pretrained_model", "false", "-p", "8002"]
+CMD ["python", "-m", "monailabel.main", "start_server", "--app", "/code/apps/radiology", "--studies", "http://orthanc:8042/dicom-web", "--conf", "models", "segmentation", "--conf", "use_pretrained_model", "true", "-p", "8002"]

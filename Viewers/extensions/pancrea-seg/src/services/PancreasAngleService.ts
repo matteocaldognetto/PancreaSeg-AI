@@ -27,6 +27,7 @@ const EVENTS = {
   COMPUTATION_STARTED: 'event::pancreasAngle_computation_started',
   COMPUTATION_ERROR: 'event::pancreasAngle_computation_error',
   AI_STATUS_CHANGED: 'event::pancreasAngle_ai_status_changed',
+  TUMOR_SESSION_CHANGED: 'event::pancreasAngle_tumor_session_changed',
 };
 
 export type AiStatus = 'idle' | 'running' | 'done' | 'error';
@@ -43,6 +44,7 @@ class PancreasAngleService extends PubSubService {
   private lastError: string | null = null;
   private aiStatus: AiStatus = 'idle';
   private aiError: string | null = null;
+  private tumorSessionReady = false;
 
   constructor() {
     super(EVENTS);
@@ -99,6 +101,15 @@ class PancreasAngleService extends PubSubService {
     this.aiStatus = status;
     this.aiError = err;
     this._broadcastEvent(EVENTS.AI_STATUS_CHANGED, { status, err });
+  }
+
+  isTumorSessionReady(): boolean {
+    return this.tumorSessionReady;
+  }
+
+  setTumorSessionReady(ready: boolean): void {
+    this.tumorSessionReady = ready;
+    this._broadcastEvent(EVENTS.TUMOR_SESSION_CHANGED, { ready });
   }
 }
 

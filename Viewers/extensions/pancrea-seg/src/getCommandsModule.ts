@@ -150,6 +150,118 @@ export default function getCommandsModule({ servicesManager, commandsManager, ex
       },
 
       /**
+       * Initialize SAM3 session for the current CT series.
+       * Must be called once before any interactive tumor segmentation prompts.
+       */
+      initTumorSegmentationSession: {
+        commandFn: async () => {
+          const allActive = displaySetService.getActiveDisplaySets();
+          const ct = (allActive as any[]).find(
+            (ds: any) => ds?.Modality === 'CT' && !ds?.isDerived
+          );
+          if (!ct) return;
+
+          const client = new MonaiLabelClient(MONAI_LABEL_BASE);
+          await client.initSession(ct.SeriesInstanceUID, ct.StudyInstanceUID);
+          pancreasAngleService.setTumorSessionReady(true);
+
+          uiNotificationService?.show?.({
+            title: 'PancreaSeg AI',
+            message: 'Tumor session initialized. Click points or draw a box on the tumor.',
+            type: 'info',
+            duration: 4000,
+          });
+        },
+      },
+
+      /**
+       * Send point/bbox prompts to the SAM3 session to segment the tumor interactively.
+       * Prompts are in voxel coordinates [x, y, z].
+       */
+      runInteractiveTumorSegmentation: {
+        commandFn: async ({
+          posPoints = [],
+          negPoints = [],
+          posBoxes = [],
+          negBoxes = [],
+        }: {
+          posPoints?: number[][];
+          negPoints?: number[][];
+          posBoxes?: number[][][];
+          negBoxes?: number[][][];
+        }) => {
+          const allActive = displaySetService.getActiveDisplaySets();
+          const ct = (allActive as any[]).find(
+            (ds: any) => ds?.Modality === 'CT' && !ds?.isDerived
+          );
+          if (!ct) return;
+
+          pancreasAngleService.setAiStatus('running');
+
+          const client = new MonaiLabelClient(MONAI_LABEL_BASE);
+          const result = await client.inferInteractive(
+            ct.SeriesInstanceUID,
+            ct.StudyInstanceUID,
+            {
+              nninter: true,
+              pos_points: posPoints,
+              neg_points: negPoints,
+              pos_boxes: posBoxes,
+              neg_boxes: negBoxes,
+            }
+          );
+
+          if (!result.ok) {
+            pancreasAngleService.setAiStatus('error', result.error);
+            uiNotificationService?.show?.({
+              title: 'PancreaSeg AI — tumor seg failed',
+              message: result.error,
+              type: 'error',
+            });
+            return;
+          }
+
+          try {
+            const [dataSource] = extensionManager.getActiveDataSource() ?? [];
+            await dataSource?.retrieve?.series?.metadata?.({ StudyInstanceUID: ct.StudyInstanceUID });
+          } catch (e) {
+            console.warn('[PancreaSeg AI] series metadata refresh failed', e);
+          }
+
+          pancreasAngleService.setAiStatus('done');
+          uiNotificationService?.show?.({
+            title: 'PancreaSeg AI',
+            message: 'Tumor segmentation updated.',
+            type: 'success',
+          });
+        },
+      },
+
+      /**
+       * Reset the SAM3 session (clears all interactive prompts for the current series).
+       */
+      resetTumorSegmentationSession: {
+        commandFn: async () => {
+          const allActive = displaySetService.getActiveDisplaySets();
+          const ct = (allActive as any[]).find(
+            (ds: any) => ds?.Modality === 'CT' && !ds?.isDerived
+          );
+          if (!ct) return;
+
+          const client = new MonaiLabelClient(MONAI_LABEL_BASE);
+          await client.resetSession(ct.SeriesInstanceUID, ct.StudyInstanceUID);
+          pancreasAngleService.setTumorSessionReady(false);
+
+          uiNotificationService?.show?.({
+            title: 'PancreaSeg AI',
+            message: 'Tumor session reset.',
+            type: 'info',
+            duration: 2000,
+          });
+        },
+      },
+
+      /**
        * Main command: fetch tumor-vessel contact angles from the Python backend
        * and store results in PancreasAngleService.
        */

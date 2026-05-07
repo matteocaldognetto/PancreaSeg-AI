@@ -57,6 +57,7 @@ services:
     runtime: nvidia
     volumes:
       - ./monai-label/predictions:/code/predictions
+      - monai_model_cache:/code/apps/radiology/model
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
@@ -95,3 +96,4 @@ services:
 
 volumes:
   orthanc-data:
+  monai_model_cache:

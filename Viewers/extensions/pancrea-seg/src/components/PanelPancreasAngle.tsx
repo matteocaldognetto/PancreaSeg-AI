@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { ContactAngleResult, AiStatus } from '../services/PancreasAngleService';
 import { PancreasAngleServiceEvents } from '../services/PancreasAngleService';
 
@@ -127,6 +127,12 @@ export function PanelPancreasAngle({ commandsManager, servicesManager }: Props) 
   const [aiError, setAiError] = useState<string | null>(
     () => (pancreasAngleService as any).getAiError()
   );
+  const [tumorSessionReady, setTumorSessionReady] = useState<boolean>(
+    () => (pancreasAngleService as any).isTumorSessionReady()
+  );
+  // Pending interactive prompts accumulated before sending
+  const pendingPosPoints = useRef<number[][]>([]);
+  const pendingPosBoxes = useRef<number[][][]>([]);
 
   // Sync segment list from SegmentationService — mirrors useViewportSegmentations approach
   useEffect(() => {
@@ -180,6 +186,10 @@ export function PanelPancreasAngle({ commandsManager, servicesManager }: Props) 
           setAiError(err);
         }
       ),
+      pancreasAngleService.subscribe(
+        PancreasAngleServiceEvents.TUMOR_SESSION_CHANGED,
+        ({ ready }: { ready: boolean }) => setTumorSessionReady(ready)
+      ),
     ];
 
     // Restore any existing results (e.g. after panel re-mount)
@@ -192,6 +202,28 @@ export function PanelPancreasAngle({ commandsManager, servicesManager }: Props) 
 
   const onRunAi = useCallback(() => {
     commandsManager.runCommand('runPancreasAiSegmentation', {});
+  }, [commandsManager]);
+
+  const onInitTumorSession = useCallback(() => {
+    pendingPosPoints.current = [];
+    pendingPosBoxes.current = [];
+    commandsManager.runCommand('initTumorSegmentationSession', {});
+  }, [commandsManager]);
+
+  const onResetTumorSession = useCallback(() => {
+    pendingPosPoints.current = [];
+    pendingPosBoxes.current = [];
+    commandsManager.runCommand('resetTumorSegmentationSession', {});
+  }, [commandsManager]);
+
+  const onSendPrompts = useCallback(() => {
+    if (pendingPosPoints.current.length === 0 && pendingPosBoxes.current.length === 0) return;
+    commandsManager.runCommand('runInteractiveTumorSegmentation', {
+      posPoints: [...pendingPosPoints.current],
+      posBoxes: [...pendingPosBoxes.current],
+    });
+    pendingPosPoints.current = [];
+    pendingPosBoxes.current = [];
   }, [commandsManager]);
 
   const toggleVessel = useCallback((key: string) => {
@@ -327,9 +359,77 @@ export function PanelPancreasAngle({ commandsManager, servicesManager }: Props) 
             {aiStatus === 'error' && (aiError ?? 'Failed')}
           </span>
         </div>
-        <p style={{ margin: 0, fontSize: '11px', color: '#64748b' }}>
-          Tumor must be drawn manually with the brush tool (Step 2).
-        </p>
+      </div>
+
+      {/* Step 2 — Interactive tumor segmentation */}
+      <div
+        style={{
+          borderBottom: '1px solid #334155',
+          paddingBottom: '12px',
+          marginBottom: '4px',
+        }}
+      >
+        <div style={{ marginBottom: '6px', color: '#94a3b8', fontSize: '11px' }}>
+          STEP 2 — TUMOR SEGMENTATION (SAM3)
+        </div>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+          <button
+            type="button"
+            onClick={onInitTumorSession}
+            disabled={aiStatus === 'running'}
+            style={{
+              flex: 1,
+              padding: '6px 8px',
+              background: tumorSessionReady ? '#166534' : '#1e3a5f',
+              color: tumorSessionReady ? '#86efac' : '#93c5fd',
+              border: `1px solid ${tumorSessionReady ? '#16a34a' : '#3b82f6'}`,
+              borderRadius: '4px',
+              fontSize: '11px',
+              cursor: 'pointer',
+            }}
+          >
+            {tumorSessionReady ? '✓ Session Ready' : 'Init Session'}
+          </button>
+          <button
+            type="button"
+            onClick={onResetTumorSession}
+            disabled={!tumorSessionReady}
+            style={{
+              padding: '6px 10px',
+              background: 'transparent',
+              color: tumorSessionReady ? '#f87171' : '#475569',
+              border: `1px solid ${tumorSessionReady ? '#f87171' : '#334155'}`,
+              borderRadius: '4px',
+              fontSize: '11px',
+              cursor: tumorSessionReady ? 'pointer' : 'not-allowed',
+            }}
+          >
+            Reset
+          </button>
+        </div>
+        {tumorSessionReady && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <p style={{ margin: 0, fontSize: '11px', color: '#64748b', lineHeight: '1.4' }}>
+              Use the MONAI Label point/box tools in the toolbar to mark the tumor.
+              Each interaction auto-sends to the SAM3 backend.
+            </p>
+            <button
+              type="button"
+              onClick={onSendPrompts}
+              style={{
+                padding: '5px 10px',
+                background: '#7c3aed',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '4px',
+                fontSize: '11px',
+                cursor: 'pointer',
+              }}
+            >
+              Send Pending Prompts
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Tumor selector */}
