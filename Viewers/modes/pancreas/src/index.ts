@@ -11,7 +11,7 @@ const ohif = {
 
 const cornerstone = {
   viewport: '@ohif/extension-cornerstone.viewportModule.cornerstone',
-  segmentation: '@ohif/extension-cornerstone.panelModule.panelSegmentation',
+  segmentation: '@ohif/extension-cornerstone.panelModule.panelSegmentationWithTools',
 };
 
 const dicomSeg = {
@@ -69,7 +69,6 @@ function modeFactory({ modeConfiguration }) {
         'Layout',
         'Crosshairs',
         'MoreTools',
-        'aiToolBoxContainer',
       ]);
 
       toolbarService.createButtonSection('MoreTools', [
