@@ -2132,7 +2132,7 @@ class BasicInferTask(InferTask):
             if callback_run_inferer:
                 data = callback_run_inferer(data)
 
-            data = self.run_invert_transforms(data, pre_transforms, self.config.get("invert_labels", None))
+            data = self.run_invert_transforms(data, pre_transforms, self._config.get("invert_labels", None))
             if callback_run_invert_transforms:
                 data = callback_run_invert_transforms(data)
 
