@@ -43,7 +43,6 @@ export default class MonaiLabelClient {
   ): Promise<MonaiInferResult> {
     const url = new URL('infer/' + encodeURIComponent(model), this.serverUrl);
     url.searchParams.append('image', image);
-    url.searchParams.append('output', 'dicom_seg');
 
     const params = {
       result_extension: '.nii.gz',

@@ -69,6 +69,7 @@ function modeFactory({ modeConfiguration }) {
         'Layout',
         'Crosshairs',
         'MoreTools',
+        'aiToolBoxContainer',
       ]);
 
       toolbarService.createButtonSection('MoreTools', [
@@ -80,6 +81,16 @@ function modeFactory({ modeConfiguration }) {
         'Cine',
         'Magnify',
         'TagBrowser',
+      ]);
+
+      // AI interactive tools (point click, bbox, lasso for SAM3 tumor seg)
+      toolbarService.createButtonSection('aiToolBox', ['aiToolBoxContainer']);
+      toolbarService.createButtonSection('aiToolBoxSection', [
+        'Probe2',
+        'PlanarFreehandROI2',
+        'PlanarFreehandROI3',
+        'RectangleROI2',
+        'nninter',
       ]);
     },
 
