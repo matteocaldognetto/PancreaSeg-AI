@@ -1,0 +1,98 @@
+services:
+  ohif-dev:
+    build:
+      context: ./Viewers
+      dockerfile: ../Dockerfile.dev
+    image: pancrea-seg-ohif-dev:latest
+    ports:
+      - "3100:3000"
+    environment:
+      - APP_CONFIG=config/pancreas.js
+      - PUBLIC_URL=/
+      - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+      - PROXY_TARGET=http://localhost:3000/pacs/dicom-web
+      - PROXY_DOMAIN=http://orthanc:8042
+      - PROXY_PATH_REWRITE_FROM=/pacs/dicom-web
+      - PROXY_PATH_REWRITE_TO=/dicom-web
+      - PANCREAS_API_DOMAIN=http://pancreas-api:8000
+      - MONAI_LABEL_DOMAIN=http://monai-sam2:8002
+    command: >
+      sh -c "cd platform/app && node .webpack/start-dev.js"
+    volumes:
+      - ./Viewers/extensions:/usr/src/app/extensions
+      - ./Viewers/modes:/usr/src/app/modes
+      - ./Viewers/platform:/usr/src/app/platform
+      - ./Viewers/addOns:/usr/src/app/addOns
+    depends_on:
+      - pancreas-api
+      - monai-sam2
+      - orthanc
+
+  pancreas-api:
+    build:
+      context: ./pancreas_api
+      dockerfile: Dockerfile
+    image: pancrea-seg-api:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - ORTHANC_URL=http://orthanc:8042
+      - CORS_ORIGINS=http://localhost:3100,http://localhost:8080
+      - WATCHFILES_FORCE_POLLING=true
+    depends_on:
+      - orthanc
+    volumes:
+      - ./pancreas_api/main.py:/app/main.py
+    command: [ "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload" ]
+    restart: unless-stopped
+
+  # ── MONAI Label — organ/vessel AI segmentation (requires NVIDIA GPU) ─────────
+  monai-sam2:
+    build:
+      context: ./
+      dockerfile: ./monai-label/Dockerfile
+    image: monai-sam2:latest
+    runtime: nvidia
+    volumes:
+      - ./monai-label/predictions:/code/predictions
+      - monai_model_cache:/code/apps/radiology/model
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "8102:8002"
+    environment:
+      - CUDA_VISIBLE_DEVICES=0,1
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - VLLM_BASE_URL=${VLLM_BASE_URL:-http://host.docker.internal:8000/v1}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
+    shm_size: '10gb'
+    depends_on:
+      - orthanc
+    restart: on-failure
+
+  orthanc:
+    image: orthancteam/orthanc:latest
+    ports:
+      - "8142:8042"
+      - "4343:4242"
+    volumes:
+      - orthanc-data:/var/lib/orthanc/db
+    environment:
+      - ORTHANC__DICOM_AET=ORTHANC
+      - ORTHANC__DICOM_PORT=4242
+      - ORTHANC__HTTP_PORT=8042
+      - ORTHANC__AUTHENTICATION_ENABLED=false
+      - ORTHANC__DICOM_WEB__ENABLE=true
+    restart: unless-stopped
+
+volumes:
+  orthanc-data:
+  monai_model_cache:

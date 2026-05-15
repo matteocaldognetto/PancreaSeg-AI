@@ -24,6 +24,8 @@ const PROXY_TARGET = process.env.PROXY_TARGET;
 const PROXY_DOMAIN = process.env.PROXY_DOMAIN;
 const PROXY_PATH_REWRITE_FROM = process.env.PROXY_PATH_REWRITE_FROM;
 const PROXY_PATH_REWRITE_TO = process.env.PROXY_PATH_REWRITE_TO;
+const PANCREAS_API_DOMAIN = process.env.PANCREAS_API_DOMAIN || 'http://localhost:5050';
+const MONAI_LABEL_DOMAIN = process.env.MONAI_LABEL_DOMAIN || 'http://localhost:8000';
 
 const OHIF_PORT = Number(process.env.OHIF_PORT || 3000);
 const ENTRY_TARGET = process.env.ENTRY_TARGET || `${SRC_DIR}/index.js`;
@@ -155,15 +157,16 @@ module.exports = (env, argv) => {
       client: {
         overlay: { errors: true, warnings: false },
       },
-      proxy: {
-        '/dicomweb': 'http://localhost:5000',
-        '/dicom-microscopy-viewer': {
+      proxy: [
+        { context: ['/dicomweb'], target: 'http://localhost:5000' },
+        {
+          context: ['/dicom-microscopy-viewer'],
           target: 'http://localhost:3000',
           pathRewrite: {
             '^/dicom-microscopy-viewer': `/${PUBLIC_URL}/dicom-microscopy-viewer`,
           },
         },
-      },
+      ],
       static: [
         {
           directory: '../../testdata',
@@ -180,7 +183,7 @@ module.exports = (env, argv) => {
       //writeToDisk: true,
       historyApiFallback: {
         disableDotRule: true,
-        index: PUBLIC_URL + 'index.html',
+        index: (PUBLIC_URL.endsWith('/') ? PUBLIC_URL : PUBLIC_URL + '/') + 'index.html',
       },
       devMiddleware: {
         writeToDisk: true,
@@ -189,16 +192,38 @@ module.exports = (env, argv) => {
   });
 
   if (hasProxy) {
-    mergedConfig.devServer.proxy = mergedConfig.devServer.proxy || {};
-    mergedConfig.devServer.proxy = {
-      [PROXY_TARGET]: {
-        target: PROXY_DOMAIN,
-        changeOrigin: true,
-        pathRewrite: {
-          [`^${PROXY_PATH_REWRITE_FROM}`]: PROXY_PATH_REWRITE_TO,
-        },
+    mergedConfig.devServer.proxy.push({
+      context: [PROXY_PATH_REWRITE_FROM],
+      target: PROXY_DOMAIN,
+      changeOrigin: true,
+      pathRewrite: {
+        [`^${PROXY_PATH_REWRITE_FROM}`]: PROXY_PATH_REWRITE_TO,
       },
-    };
+    });
+  }
+
+  if (PANCREAS_API_DOMAIN) {
+    mergedConfig.devServer.proxy.push({
+      context: ['/pancreas-api'],
+      target: PANCREAS_API_DOMAIN,
+      changeOrigin: true,
+      pathRewrite: { '^/pancreas-api': '' },
+    });
+  }
+
+  if (MONAI_LABEL_DOMAIN) {
+    mergedConfig.devServer.proxy.push({
+      context: ['/monai-label'],
+      target: MONAI_LABEL_DOMAIN,
+      changeOrigin: true,
+      pathRewrite: { '^/monai-label': '' },
+    });
+    mergedConfig.devServer.proxy.push({
+      context: ['/monai'],
+      target: MONAI_LABEL_DOMAIN,
+      changeOrigin: true,
+      pathRewrite: { '^/monai': '' },
+    });
   }
 
   if (isProdBuild) {

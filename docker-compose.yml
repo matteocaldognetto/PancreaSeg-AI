@@ -18,8 +18,8 @@ services:
       # Logs
       - ./Viewers/platform/app/.recipes/Nginx-Orthanc/logs/nginx:/var/logs/nginx
     ports:
-      - '1025:1025' # SSL
-      - '1026:1026' # Web
+      - '1125:1025' # SSL
+      - '1126:1026' # Web
     depends_on:
       #   - keycloak
       - orthanc
@@ -39,8 +39,8 @@ services:
       - ./Viewers/platform/app/.recipes/Nginx-Orthanc/volumes/orthanc-db/:/var/lib/orthanc/db/
     restart: unless-stopped
     ports:
-      - '4242:4242' # Orthanc REST API
-      - '8042:8042' # Orthanc HTTP
+      - '4343:4242' # Orthanc REST API
+      - '8142:8042' # Orthanc HTTP
   
   monai_sam2:
     build:
@@ -79,7 +79,7 @@ services:
               capabilities: [gpu]  # Request GPUs for this service
     shm_size: '10gb' #runtime: nvidia  # Use NVIDIA runtime
     ports:
-      - '8002:8002' 
+      - '8102:8002'
     depends_on:
       - ohif_viewer
       - orthanc

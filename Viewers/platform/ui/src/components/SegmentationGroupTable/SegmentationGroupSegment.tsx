@@ -20,6 +20,7 @@ const SegmentItem = ({
   onToggleVisibility,
   onToggleLocked,
   displayText,
+  onDoubleClick,
 }) => {
   const [isNumberBoxHovering, setIsNumberBoxHovering] = useState(false);
 
@@ -36,6 +37,12 @@ const SegmentItem = ({
       onClick={e => {
         e.stopPropagation();
         onClick(segmentationId, segmentIndex);
+      }}
+      onDoubleClick={e => {
+        e.stopPropagation();
+        if (onDoubleClick) {
+          onDoubleClick(segmentationId, segmentIndex);
+        }
       }}
       tabIndex={0}
       data-cy={'segment-item'}

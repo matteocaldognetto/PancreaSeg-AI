@@ -14,7 +14,7 @@ import PanelServiceType from '../services/PanelService';
 import UIDialogServiceType from '../services/UIDialogService';
 import UIViewportDialogServiceType from '../services/UIViewportDialogService';
 import StudyPrefetcherServiceType from '../services/StudyPrefetcherService';
-import type { MultiMonitorService } from '../services/MultiMonitorService';
+import type { MultiMonitorService } from '@ohif/core';
 
 import ServicesManagerType from '../services/ServicesManager';
 import CommandsManagerType from '../classes/CommandsManager';
@@ -33,8 +33,6 @@ import * as IPubSubTypes from './IPubSub';
 import * as PanelModuleTypes from './PanelModule';
 import * as StudyMetadataTypes from './StudyMetadata';
 import * as ViewportGridTypes from './ViewportGridType';
-
-import { StepOptions, TourOptions } from 'shepherd.js';
 
 declare global {
   namespace AppTypes {

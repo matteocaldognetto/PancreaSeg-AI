@@ -42,6 +42,9 @@ export default function PanelSegmentation({ children }: withAppTypes) {
     onSegmentClick: (segmentationId, segmentIndex) => {
       commandsManager.run('setActiveSegmentAndCenter', { segmentationId, segmentIndex });
     },
+    onSegmentDoubleClick: (segmentationId, segmentIndex) => {
+      commandsManager.run('runSegmentBidirectional', { segmentationId, segmentIndex });
+    },
     onSegmentEdit: (segmentationId, segmentIndex) => {
       commandsManager.run('editSegmentLabel', { segmentationId, segmentIndex });
     },

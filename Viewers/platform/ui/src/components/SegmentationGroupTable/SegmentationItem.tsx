@@ -20,6 +20,7 @@ function SegmentationItem({
   onToggleSegmentationVisibility,
   onSegmentAdd,
   onSegmentClick,
+  onSegmentDoubleClick,
   onSegmentDelete,
   onSegmentEdit,
   showDeleteSegment,
@@ -162,6 +163,7 @@ function SegmentationItem({
                     isLocked={isLocked}
                     isVisible={isVisible}
                     onClick={onSegmentClick}
+                    onDoubleClick={onSegmentDoubleClick}
                     onEdit={onSegmentEdit}
                     onDelete={onSegmentDelete}
                     showDelete={showDeleteSegment}
@@ -192,6 +194,7 @@ SegmentationItem.propTypes = {
   showAddSegment: PropTypes.bool,
   onSegmentAdd: PropTypes.func,
   onSegmentClick: PropTypes.func,
+  onSegmentDoubleClick: PropTypes.func,
   onSegmentDelete: PropTypes.func,
   onSegmentEdit: PropTypes.func,
   showDeleteSegment: PropTypes.bool,

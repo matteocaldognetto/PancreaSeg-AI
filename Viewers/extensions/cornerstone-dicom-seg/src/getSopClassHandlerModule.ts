@@ -215,7 +215,6 @@ async function _loadSegments({
   });
 
   if (!usedRecommendedDisplayCIELabValue) {
-    // Display a notification about the non-utilization of RecommendedDisplayCIELabValue
     uiNotificationService.show({
       title: 'DICOM SEG import',
       message:

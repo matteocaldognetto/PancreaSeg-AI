@@ -286,6 +286,7 @@ export default class ToolbarService extends PubSubService {
 
         toolButtonIds.forEach(buttonId => {
           const button = buttons[buttonId];
+          this.handleEvaluate(button.props);
           const updatedProps = evaluateButtonProps(button, button.props, refreshProps);
           buttons[buttonId] = {
             ...button,

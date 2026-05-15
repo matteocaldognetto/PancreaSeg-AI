@@ -25,6 +25,7 @@ export const SegmentationSegments = ({ children = null }: { children?: React.Rea
     onToggleSegmentMeasurement,
     onToggleSegmentLock,
     onSegmentClick,
+    onSegmentDoubleClick,
     onSegmentEdit,
     onSegmentDelete,
     data,
@@ -136,6 +137,11 @@ export const SegmentationSegments = ({ children = null }: { children?: React.Rea
               onToggleMeasurement={() => onToggleSegmentMeasurement(segmentation.segmentationId, segmentIndex)}
               onToggleLocked={() => onToggleSegmentLock(segmentation.segmentationId, segmentIndex)}
               onSelect={() => onSegmentClick(segmentation.segmentationId, segmentIndex)}
+              onDoubleClick={() => {
+                if (onSegmentDoubleClick) {
+                  onSegmentDoubleClick(segmentation.segmentationId, segmentIndex);
+                }
+              }}
               onRename={() => onSegmentEdit(segmentation.segmentationId, segmentIndex)}
               onDelete={() => onSegmentDelete(segmentation.segmentationId, segmentIndex)}
             />
